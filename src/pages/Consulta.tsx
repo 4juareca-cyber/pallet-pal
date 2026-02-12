@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { useOrientation } from '@/hooks/useOrientation';
@@ -15,12 +15,16 @@ const Consulta: React.FC = () => {
   const [codigo, setCodigo] = useState('');
   const [resultado, setResultado] = useState<ArticuloInventario | null>(null);
   const [noEncontrado, setNoEncontrado] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleConfirm = () => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setCodigo(e.target.value.toUpperCase());
+  }, []);
+
+  const handleConfirm = useCallback(() => {
     if (!codigo.trim()) return;
 
-    const searchCode = codigo.toUpperCase();
-    // Try exact match first, then partial
+    const searchCode = codigo.toUpperCase().trim();
     const found = inventario.find(
       (a) => a.CODIGO === searchCode || a.CODIGO === `JCB-${searchCode}`
     );
@@ -47,7 +51,13 @@ const Consulta: React.FC = () => {
       setResultado(null);
       setNoEncontrado(true);
     }
-  };
+  }, [codigo, inventario, operarioActual, agregarRegistro]);
+
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleConfirm();
+    }
+  }, [handleConfirm]);
 
   const handleNuevaConsulta = () => {
     setCodigo('');
@@ -67,12 +77,21 @@ const Consulta: React.FC = () => {
           </button>
         </div>
 
-        {/* Código display */}
+        {/* Código input - compatible con lector de barras y teclado */}
         <div className="space-y-3">
-          <label className="text-foreground text-sm">CÓDIGO ARTÍCULO</label>
-          <div className="input-field text-2xl min-h-[60px] flex items-center">
-            {codigo ? `JCB-${codigo}` : 'INTRODUCE CÓDIGO...'}
-          </div>
+          <label className="text-foreground text-sm">CÓDIGO ARTÍCULO (ESCÁNER / TECLADO / NUMPAD)</label>
+          <input
+            ref={inputRef}
+            type="text"
+            value={codigo}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
+            placeholder="INTRODUCE CÓDIGO..."
+            className="input-field text-2xl min-h-[60px]"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
         </div>
 
         {/* Resultado */}
