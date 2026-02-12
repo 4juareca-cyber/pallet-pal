@@ -1,6 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -11,6 +17,9 @@ const Login: React.FC = () => {
     setOperario,
     cargarExcel,
     excelCargado,
+    operarioActual,
+    registros,
+    resetearSesion,
   } = useAppStore();
 
   const [selectedOperario, setSelectedOperario] = useState('');
@@ -18,6 +27,13 @@ const Login: React.FC = () => {
   const [showAddInput, setShowAddInput] = useState(false);
   const [loadMsg, setLoadMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [modalRecuperar, setModalRecuperar] = useState(false);
+
+  useEffect(() => {
+    if (operarioActual && registros.length > 0) {
+      setModalRecuperar(true);
+    }
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,10 +92,7 @@ const Login: React.FC = () => {
           </select>
 
           {!showAddInput ? (
-            <button
-              onClick={() => setShowAddInput(true)}
-              className="btn-secondary w-full"
-            >
+            <button onClick={() => setShowAddInput(true)} className="btn-secondary w-full">
               + AÑADIR OPERARIO
             </button>
           ) : (
@@ -132,6 +145,43 @@ const Login: React.FC = () => {
           INICIAR SESIÓN
         </button>
       </div>
+
+      {/* Modal recuperar sesión */}
+      <Dialog open={modalRecuperar} onOpenChange={setModalRecuperar}>
+        <DialogContent className="bg-card border-primary">
+          <DialogHeader>
+            <DialogTitle className="text-primary text-2xl text-center">
+              SESIÓN GUARDADA DETECTADA
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4 text-center">
+            <p className="text-foreground">
+              OPERARIO: <span className="text-primary">{operarioActual}</span>
+            </p>
+            <p className="text-foreground">
+              REGISTROS: <span className="text-primary">{registros.length}</span>
+            </p>
+            <button
+              onClick={() => {
+                setModalRecuperar(false);
+                navigate('/menu');
+              }}
+              className="btn-primary w-full"
+            >
+              RECUPERAR SESIÓN
+            </button>
+            <button
+              onClick={() => {
+                resetearSesion();
+                setModalRecuperar(false);
+              }}
+              className="btn-secondary w-full"
+            >
+              NUEVA SESIÓN
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
