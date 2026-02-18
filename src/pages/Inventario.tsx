@@ -14,6 +14,7 @@ interface ItemEscaneado {
   DESCRIPCION: string;
   STOCK_ACTUAL: number;
   STOCK_REAL: number;
+  UBICACION_ANTERIOR: string;
   NUEVA_UBICACION: string;
 }
 
@@ -78,6 +79,7 @@ const ListaModal: React.FC<ListaModalProps> = ({ items, onClose, onUpdateStock, 
                   <th className="p-3 text-left">DESCRIPCIÓN</th>
                   <th className="p-3 text-center">STOCK ACTUAL</th>
                   <th className="p-3 text-center">STOCK REAL</th>
+                  <th className="p-3 text-left">UBIC. ANTERIOR</th>
                   <th className="p-3 text-left">NUEVA UBICACIÓN</th>
                   <th className="p-3 text-center">ACCIONES</th>
                 </tr>
@@ -108,7 +110,10 @@ const ListaModal: React.FC<ListaModalProps> = ({ items, onClose, onUpdateStock, 
                       )}
                     </td>
 
-                    {/* Ubicación editable */}
+                    {/* Ubicación anterior */}
+                    <td className="p-2 text-muted-foreground text-xs">{item.UBICACION_ANTERIOR || '—'}</td>
+
+                    {/* Nueva Ubicación editable */}
                     <td className="p-2">
                       {editingUbicacion === item.CODIGO ? (
                         <div className="flex gap-1 items-center">
@@ -357,6 +362,49 @@ const Inventario: React.FC = () => {
         DESCRIPCION: articuloActual.DESCRIPCION,
         STOCK_ACTUAL: articuloActual.STOCK_ACTUAL,
         STOCK_REAL: stockRealNum,
+        UBICACION_ANTERIOR: articuloActual.UBICACION,
+        NUEVA_UBICACION: ubicacionFinal,
+      });
+      return next;
+    });
+
+    setGuardado(true);
+  };
+
+  // Guardar que el stock actual es correcto (sin modificar el número)
+  const guardarStockCorrecto = () => {
+    if (!articuloActual) return;
+    const ubicacionFinal = nuevaUbicacion || articuloActual.UBICACION;
+
+    if (itemsEscaneados.has(articuloActual.CODIGO)) {
+      setDuplicadoItem(itemsEscaneados.get(articuloActual.CODIGO)!);
+      return;
+    }
+
+    actualizarInventario(articuloActual.CODIGO, { UBICACION: ubicacionFinal });
+    agregarRegistro({
+      FECHA_HORA: new Date().toLocaleString('es-ES'),
+      OPERARIO: operarioActual!,
+      CODIGO: articuloActual.CODIGO,
+      DESCRIPCION: articuloActual.DESCRIPCION,
+      TIPO_OPERACION: 'INVENTARIO',
+      STOCK_ANTERIOR: articuloActual.STOCK_ACTUAL,
+      STOCK_REAL: articuloActual.STOCK_ACTUAL,
+      DIFERENCIA: 0,
+      UBICACION_ANTERIOR: articuloActual.UBICACION,
+      UBICACION_NUEVA: ubicacionFinal,
+      PROVEEDOR: null,
+      CANTIDAD_PEDIDO: null,
+    });
+
+    setItemsEscaneados((prev) => {
+      const next = new Map(prev);
+      next.set(articuloActual.CODIGO, {
+        CODIGO: articuloActual.CODIGO,
+        DESCRIPCION: articuloActual.DESCRIPCION,
+        STOCK_ACTUAL: articuloActual.STOCK_ACTUAL,
+        STOCK_REAL: articuloActual.STOCK_ACTUAL,
+        UBICACION_ANTERIOR: articuloActual.UBICACION,
         NUEVA_UBICACION: ubicacionFinal,
       });
       return next;
@@ -403,6 +451,7 @@ const Inventario: React.FC = () => {
         DESCRIPCION: altaDescripcion.toUpperCase(),
         STOCK_ACTUAL: 0,
         STOCK_REAL: 0,
+        UBICACION_ANTERIOR: '',
         NUEVA_UBICACION: altaUbicacion.toUpperCase(),
       });
       return next;
@@ -570,13 +619,21 @@ const Inventario: React.FC = () => {
                 className="input-field"
               />
             </div>
-            <button
-              onClick={guardarRegularizacion}
-              disabled={!stockReal}
-              className="btn-primary w-full disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              GUARDAR REGULARIZACIÓN
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={guardarStockCorrecto}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-3 rounded min-h-[52px] text-sm border-none"
+              >
+                ✅ STOCK CORRECTO
+              </button>
+              <button
+                onClick={guardarRegularizacion}
+                disabled={!stockReal}
+                className="flex-1 btn-primary disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                📝 GUARDAR REGULARIZACIÓN
+              </button>
+            </div>
           </div>
         )}
 

@@ -18,6 +18,119 @@ interface LineaPedido {
 type Paso = 'seleccion' | 'escaneo';
 
 // ──────────────────────────────────────────────────────────────
+// Modal listado completo de líneas del pedido
+// ──────────────────────────────────────────────────────────────
+interface LineasModalProps {
+  lineas: LineaPedido[];
+  onClose: () => void;
+  onModificarCantidad: (index: number, nuevaCantidad: number) => void;
+  onEliminar: (index: number) => void;
+}
+
+const LineasModal: React.FC<LineasModalProps> = ({ lineas, onClose, onModificarCantidad, onEliminar }) => {
+  const [editandoIdx, setEditandoIdx] = useState<number | null>(null);
+  const [tempVal, setTempVal] = useState('');
+  const [confirmEliminar, setConfirmEliminar] = useState<number | null>(null);
+
+  const confirmarEdicion = (idx: number) => {
+    const val = parseFloat(tempVal);
+    if (!isNaN(val) && val > 0) onModificarCantidad(idx, val);
+    setEditandoIdx(null);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2">
+      <div className="bg-background border-4 border-primary w-full max-w-6xl max-h-[95vh] flex flex-col rounded">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b-2 border-primary bg-secondary">
+          <h2 className="text-primary text-xl font-bold">📦 LÍNEAS DEL PEDIDO ({lineas.length})</h2>
+          <button onClick={onClose} className="btn-secondary text-sm py-2 px-4 min-h-0">✕ CERRAR</button>
+        </div>
+
+        {/* Tabla */}
+        <div className="overflow-auto flex-1">
+          {lineas.length === 0 ? (
+            <p className="text-muted-foreground text-center p-8">NO HAY ARTÍCULOS EN EL PEDIDO</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="p-3 text-left">CÓDIGO</th>
+                  <th className="p-3 text-left">DESCRIPCIÓN</th>
+                  <th className="p-3 text-left">UBICACIÓN</th>
+                  <th className="p-3 text-center">STOCK ACTUAL</th>
+                  <th className="p-3 text-center">CANTIDAD PEDIDA</th>
+                  <th className="p-3 text-center">ACCIONES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineas.map((linea, idx) => (
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-background' : 'bg-secondary'}>
+                    <td className="p-2 text-foreground font-bold">{linea.CODIGO}</td>
+                    <td className="p-2 text-foreground text-xs">{linea.DESCRIPCION}</td>
+                    <td className="p-2 text-foreground text-xs">{linea.UBICACION}</td>
+                    <td className="p-2 text-center text-foreground">{linea.STOCK_ACTUAL}</td>
+                    {/* Cantidad editable */}
+                    <td className="p-2 text-center">
+                      {editandoIdx === idx ? (
+                        <div className="flex gap-1 items-center justify-center">
+                          <input
+                            type="number"
+                            value={tempVal}
+                            onChange={(e) => setTempVal(e.target.value)}
+                            className="input-field w-20 text-center py-1 px-2 text-base min-h-0"
+                            autoFocus
+                            min="1"
+                          />
+                          <button onClick={() => confirmarEdicion(idx)} className="bg-green-600 text-white px-2 py-1 text-xs rounded">✓</button>
+                          <button onClick={() => setEditandoIdx(null)} className="bg-gray-600 text-white px-2 py-1 text-xs rounded">✕</button>
+                        </div>
+                      ) : (
+                        <span className="text-primary font-bold text-lg">{linea.CANTIDAD}</span>
+                      )}
+                    </td>
+                    {/* Acciones */}
+                    <td className="p-2">
+                      <div className="flex gap-1 justify-center">
+                        <button
+                          onClick={() => { setEditandoIdx(idx); setTempVal(String(linea.CANTIDAD)); }}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 text-xs rounded min-h-[40px]"
+                        >✏️ CANTIDAD</button>
+                        <button
+                          onClick={() => setConfirmEliminar(idx)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 text-xs rounded min-h-[40px]"
+                        >❌ ELIMINAR</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Confirmación eliminar */}
+      {confirmEliminar !== null && (
+        <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-background border-4 border-destructive rounded p-6 max-w-sm w-full text-center space-y-4">
+            <p className="text-destructive text-lg font-bold">¿ELIMINAR LÍNEA?</p>
+            <p className="text-foreground text-sm">{lineas[confirmEliminar]?.CODIGO}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { onEliminar(confirmEliminar); setConfirmEliminar(null); }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded min-h-[50px]"
+              >SÍ, ELIMINAR</button>
+              <button onClick={() => setConfirmEliminar(null)} className="btn-secondary flex-1">CANCELAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────────────────────────
 // Modal gestión de proveedores (B1)
 // ──────────────────────────────────────────────────────────────
 interface GestionProveedoresModalProps {
@@ -139,6 +252,9 @@ const Pedido: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [lineasPedido, setLineasPedido] = useState<LineaPedido[]>([]);
   const [pedidoFinalizado, setPedidoFinalizado] = useState(false);
+  const [mostrarLineas, setMostrarLineas] = useState(false);
+  const [editandoCantidad, setEditandoCantidad] = useState<number | null>(null);
+  const [tempCantidad, setTempCantidad] = useState('');
 
   // Combinar proveedores del Excel con los custom (por nombre)
   const todosLosNombres = Array.from(new Set([
@@ -396,21 +512,27 @@ const Pedido: React.FC = () => {
           </div>
         )}
 
-        {/* Líneas */}
+        {/* Líneas - resumen compacto + botón ver listado */}
         {lineasPedido.length > 0 && (
-          <div className="border-t-2 border-primary pt-3">
-            <h3 className="text-primary text-lg mb-2">LÍNEAS ({lineasPedido.length}):</h3>
-            <div className="space-y-2 max-h-[200px] overflow-auto">
+          <div className="border-t-2 border-primary pt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-primary text-lg">LÍNEAS ({lineasPedido.length}):</h3>
+              <button
+                onClick={() => setMostrarLineas(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 text-xs rounded min-h-[40px] border-none"
+              >
+                📋 VER LISTADO COMPLETO
+              </button>
+            </div>
+            <div className="space-y-1 max-h-[120px] overflow-auto">
               {lineasPedido.map((linea, i) => (
                 <div key={i} className="flex justify-between items-center bg-secondary p-2 border border-primary rounded text-sm">
-                  <span className="text-foreground">{linea.CODIGO} x {linea.CANTIDAD}</span>
-                  <button onClick={() => eliminarLinea(i)} className="bg-destructive text-destructive-foreground px-3 py-1 rounded text-xs">
-                    ELIMINAR
-                  </button>
+                  <span className="text-foreground text-xs">{linea.CODIGO} — {linea.DESCRIPCION.substring(0, 25)}</span>
+                  <span className="text-primary font-bold ml-2">x{linea.CANTIDAD}</span>
                 </div>
               ))}
             </div>
-            <button onClick={finalizarPedido} className="btn-primary w-full mt-3">
+            <button onClick={finalizarPedido} className="btn-primary w-full mt-2">
               FINALIZAR Y EXPORTAR PEDIDO ({lineasPedido.length} LÍNEAS)
             </button>
           </div>
@@ -430,6 +552,20 @@ const Pedido: React.FC = () => {
           onConfirm={handleNumPadConfirm}
         />
       </div>
+
+      {/* Modal listado completo de líneas */}
+      {mostrarLineas && (
+        <LineasModal
+          lineas={lineasPedido}
+          onClose={() => setMostrarLineas(false)}
+          onModificarCantidad={(idx, nuevaCantidad) => {
+            setLineasPedido((prev) => prev.map((l, i) => i === idx ? { ...l, CANTIDAD: nuevaCantidad } : l));
+          }}
+          onEliminar={(idx) => {
+            setLineasPedido((prev) => prev.filter((_, i) => i !== idx));
+          }}
+        />
+      )}
     </div>
   );
 };
